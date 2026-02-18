@@ -38,6 +38,20 @@ void insert(struct avl_map_root *const root, struct avl_map_node *const new) {
 	}
 }
 
+struct avl_map_node *search(struct avl_map_root const *const root, int const key) {
+	struct avl_map_node *target = root->avl_root;
+	while (target) {
+		if (key < target->avl_key) {
+			target = target->avl_left;
+		} else if (key > target->avl_key) {
+			target = target->avl_right;
+		} else {
+			break;
+		}
+	}
+	return target;
+}
+
 static void balance(struct avl_map_root *root, struct avl_map_node *current) {
 	while (current) {
 		set_avl_height(current);
