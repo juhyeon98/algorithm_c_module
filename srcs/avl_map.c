@@ -6,6 +6,7 @@ static void set_avl_height(struct avl_map_node *const node);
 static size_t get_avl_height(struct avl_map_node const *const node);
 static int get_balance_factor(struct avl_map_node *const node);
 
+static void change_parent(struct avl_map_node *target, struct avl_map_node *child);
 static struct avl_map_node *exchange_left_tree(struct avl_map_node *target);
 static struct avl_map_node *exchange_right_tree(struct avl_map_node *target);
 
@@ -49,41 +50,19 @@ struct avl_map_node *remove(struct avl_map_root *const root, int const key) {
 
 	struct avl_map_node *const parent = target->avl_parent;
 	if (target->avl_left == NULL && target->avl_right == NULL) {
-		if (parent) {
-			if (parent->avl_left == target) {
-				parent->avl_left = NULL;
-			} else {
-				parent->avl_right = NULL;
-			}
-		}
-		balance(root, parent);
+		change_parent(target, NULL);
 	} else if (target->avl_left == NULL) {
 		target->avl_right->avl_parent = parent;
-		if (parent) {
-			if (parent->avl_left == target) {
-				parent->avl_left = target->avl_right;
-			} else {
-				parent->avl_right = target->avl_right;
-			}
-		}
-		balance(root, parent);
+		change_parent(target, target->avl_right);
 	} else if (target->avl_right == NULL) {
 		target->avl_left->avl_parent = parent;
-		if (parent) {
-			if (parent->avl_left == target) {
-				parent->avl_left = target->avl_left;
-			} else {
-				parent->avl_right = target->avl_left;
-			}
-		}
-		balance(root, parent);
+		change_parent(target, target->avl_left);
 	} else {
 		int const balance_factor = get_balance_factor(target);
-		struct avl_map_node *balance_point = ( \
-				balance_factor < 0 ? \
+		balance_point = (balance_factor < 0 ? \
 				exchange_right_tree(target) : exchange_left_tree(target) );
-		balance(root, balance_point);
 	}
+	balance(root, balance_point);
 
 	target->avl_parent = target->avl_left = target->avl_right = NULL;
 	return target;
@@ -145,11 +124,17 @@ static int get_balance_factor(struct avl_map_node *const node) {
 	if (!node) {
 		return 0;
 	}
+	return (int)(get_avl_height(node->avl_left) - get_avl_height(node->avl_right));
+}
 
-	size_t left_height = get_avl_height(node->avl_left);
-	size_t right_height = get_avl_height(node->avl_right);
-
-	return (int)(left_height - right_height);
+static void change_parent(struct avl_map_node *target, struct avl_map_node *child) {
+	if (target->avl_parent) {
+		if (target->avl_parent->avl_left == target) {
+			target->avl_parent->avl_left = child;
+		} else {
+			target->avl_parent->avl_right = child;
+		}
+	}
 }
 
 static struct avl_map_node *exchange_left_tree(struct avl_map_node *target) {
@@ -163,13 +148,7 @@ static struct avl_map_node *exchange_left_tree(struct avl_map_node *target) {
 	}
 
 	to_exchange->avl_parent = parent;
-	if (parent) {
-		if (parent->avl_left == target) {
-			parent->avl_left = to_exchange;
-		} else {
-			parent->avl_right = to_exchange;
-		}
-	}
+	change_parent(target, to_exchange);
 
 	to_exchange->avl_right = target->avl_right;
 	if (target->avl_right) {
@@ -194,7 +173,6 @@ static struct avl_map_node *exchange_left_tree(struct avl_map_node *target) {
 }
 
 static struct avl_map_node *exchange_right_tree(struct avl_map_node *target) {
-	struct avl_map_node *const parent = target->avl_parent;
 	struct avl_map_node *to_exchange = target->avl_right;
 	struct avl_map_node *exchange_parent = target;
 
@@ -203,14 +181,8 @@ static struct avl_map_node *exchange_right_tree(struct avl_map_node *target) {
 		to_exchange = to_exchange->avl_left;
 	}
 
-	to_exchange->avl_parent = parent;
-	if (parent) {
-		if (parent->avl_left == target) {
-			parent->avl_left = to_exchange;
-		} else {
-			parent->avl_right = to_exchange;
-		}
-	}
+	to_exchange->avl_parent = target->avl_parent;
+	change_parent(target, to_exchange);
 
 	to_exchange->avl_left = target->avl_left;
 	if (target->avl_left) {
@@ -235,18 +207,11 @@ static struct avl_map_node *exchange_right_tree(struct avl_map_node *target) {
 }
 
 static struct avl_map_node *rotate_left(struct avl_map_node *const current) {
-	struct avl_map_node *const parent = current->avl_parent;
 	struct avl_map_node *const child = current->avl_right;
 	struct avl_map_node *const subtree = child->avl_left;
 
-	child->avl_parent = parent;
-	if (parent) {
-		if (parent->avl_left == current) {
-			parent->avl_left = child;
-		} else {
-			parent->avl_right = child;
-		}
-	}
+	child->avl_parent = current->avl_parent;
+	change_parent(current, child);
 
 	child->avl_left = current;
 	current->avl_parent = child;
@@ -263,18 +228,11 @@ static struct avl_map_node *rotate_left(struct avl_map_node *const current) {
 }
 
 static struct avl_map_node *rotate_right(struct avl_map_node *const current) {
-	struct avl_map_node *const parent = current->avl_parent;
 	struct avl_map_node *const child = current->avl_left;
 	struct avl_map_node *const subtree = child->avl_right;
 
-	child->avl_parent = parent;
-	if (parent) {
-		if (parent->avl_left == current) {
-			parent->avl_left = child;
-		} else {
-			parent->avl_right = child;
-		}
-	}
+	child->avl_parent = current->avl_parent;
+	change_parent(current, child);
 
 	child->avl_right = current;
 	current->avl_parent = child;
