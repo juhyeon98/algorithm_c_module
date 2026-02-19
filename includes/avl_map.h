@@ -15,5 +15,7 @@ struct avl_map_root {
 };
 
 void insert(struct avl_map_root *const root, struct avl_map_node *const new);
+struct avl_map_node *remove(struct avl_map_root *const root, int const key);
+struct avl_map_node *search(struct avl_map_root const *const root, int const key);
 
 #endif
